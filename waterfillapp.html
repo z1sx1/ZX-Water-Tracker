@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HydroGuard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap');
+:root{--black:#000;--white:#fff;--g1:#0d0d0d;--g2:#1a1a1a;--g3:#2a2a2a;--g4:#3d3d3d;--g5:#666;--g6:#999;--g7:#ccc;--warn:#1a1000;--warn-b:#4d2d00;--accent:#00d4ff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--black);color:var(--white);font-family:'Space Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9998;opacity:.4;}
+
+.tab-bar{position:sticky;top:0;z-index:100;background:var(--black);border-bottom:1px solid var(--g3);display:flex;align-items:stretch;}
+.tab-bar-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;padding:14px 20px;border-right:1px solid var(--g3);white-space:nowrap;}
+.tabs{display:flex;flex:1;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex:1;min-width:70px;padding:14px 6px;background:none;border:none;color:var(--g5);font-family:'Space Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:2px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+.tab:hover{color:var(--g7);}
+.tab.active{color:var(--white);border-bottom-color:var(--white);}
+
+.page{display:none;padding:20px 16px 100px;max-width:480px;margin:0 auto;}
+.page.active{display:block;}
+
+.sec-head{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:4px;color:var(--g5);text-transform:uppercase;margin:24px 0 10px;display:flex;align-items:center;gap:10px;}
+.sec-head::after{content:'';flex:1;height:1px;background:var(--g3);}
+
+.big-number{font-family:'Bebas Neue',sans-serif;font-size:120px;line-height:1;letter-spacing:-2px;color:var(--white);text-align:center;margin:8px 0 0;}
+.big-denom{text-align:center;font-size:11px;letter-spacing:4px;color:var(--g5);text-transform:uppercase;margin-bottom:20px;}
+
+.tube-wrap{display:flex;justify-content:center;gap:6px;margin-bottom:24px;flex-wrap:wrap;}
+.tube{width:28px;height:68px;border:1.5px solid var(--g4);border-radius:4px;overflow:hidden;position:relative;background:var(--g1);}
+.tube-fill{position:absolute;bottom:0;left:0;right:0;background:var(--white);height:0%;transition:height .6s cubic-bezier(.34,1.56,.64,1);}
+.tube.done .tube-fill{height:100%;}
+.tube.active{border-color:var(--white);box-shadow:0 0 12px rgba(255,255,255,.2);}
+
+/* COUNTDOWN TIMER BOX */
+.countdown-box{border:1px solid var(--g3);padding:18px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;transition:border-color .3s;}
+.countdown-box.urgent{border-color:var(--accent);box-shadow:0 0 20px rgba(0,212,255,.1);}
+.countdown-box.fire{border-color:#fff;animation:urgentPulse 0.8s infinite;}
+@keyframes urgentPulse{0%,100%{box-shadow:0 0 0 rgba(255,255,255,0);}50%{box-shadow:0 0 20px rgba(255,255,255,.3);}}
+.cdown-left .cdown-label{font-size:9px;letter-spacing:2px;color:var(--g5);text-transform:uppercase;margin-bottom:4px;}
+.cdown-timer{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:4px;line-height:1;transition:color .3s;}
+.cdown-timer.urgent{color:var(--accent);}
+.cdown-timer.fire{color:#fff;animation:timerFlash .5s infinite;}
+@keyframes timerFlash{0%,100%{opacity:1;}50%{opacity:.5;}}
+.cdown-right{font-size:32px;}
+.cdown-progress{position:absolute;bottom:0;left:0;height:2px;background:var(--white);transition:width 1s linear;width:0%;}
+.cdown-progress.urgent{background:var(--accent);}
+
+/* DRINK BUTTON STATES */
+.drink-btn{display:block;width:100%;padding:20px;background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;text-align:center;}
+.drink-btn:hover:not(:disabled){background:var(--g7);}
+.drink-btn:active:not(:disabled){transform:scale(.98);}
+.drink-btn.locked-until{background:var(--g2);color:var(--g5);border:1px solid var(--g3);cursor:not-allowed;}
+.drink-btn.reminder-active{background:var(--white);color:var(--black);animation:pulsebtn 1.2s infinite;}
+.drink-btn:disabled.done-today{background:var(--g3);color:var(--g5);cursor:not-allowed;}
+@keyframes pulsebtn{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.4);}50%{box-shadow:0 0 0 10px rgba(255,255,255,0);}}
+.drink-btn .ripple{position:absolute;border-radius:50%;background:rgba(0,0,0,.2);transform:scale(0);animation:ripple .6s linear;pointer-events:none;}
+@keyframes ripple{to{transform:scale(6);opacity:0;}}
+
+.btn-sub{text-align:center;font-size:10px;color:var(--g5);letter-spacing:2px;margin-top:8px;min-height:16px;}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
+.stat-box{border:1px solid var(--g3);padding:14px 10px;text-align:center;}
+.stat-val{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--white);line-height:1;}
+.stat-lbl{font-size:9px;letter-spacing:2px;color:var(--g5);text-transform:uppercase;margin-top:4px;}
+
+.next-row{border:1px solid var(--g3);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.next-label{font-size:9px;letter-spacing:2px;color:var(--g5);text-transform:uppercase;margin-bottom:4px;}
+.next-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;}
+
+.motivation-bar{border:1px solid var(--g3);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;}
+.mot-icon{font-size:28px;}
+.mot-text{font-size:10px;color:var(--g6);line-height:1.7;letter-spacing:.5px;}
+.mot-text strong{color:var(--white);}
+
+.sched-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.sched-item{border:1px solid var(--g3);padding:10px 8px;text-align:center;position:relative;transition:all .3s;}
+.sched-item.done{background:var(--white);border-color:var(--white);}
+.sched-item.done .s-time,.sched-item.done .s-num{color:var(--black);}
+.sched-item.active{border-color:var(--white);animation:blink 1.5s infinite;}
+.sched-item.next-up{border-color:var(--accent);box-shadow:0 0 10px rgba(0,212,255,.15);}
+@keyframes blink{0%,100%{box-shadow:0 0 0 rgba(255,255,255,0);}50%{box-shadow:0 0 16px rgba(255,255,255,.25);}}
+.s-time{font-size:12px;font-weight:700;}
+.s-num{font-size:9px;letter-spacing:1px;color:var(--g5);margin-top:2px;text-transform:uppercase;}
+.s-check{position:absolute;top:4px;right:5px;font-size:9px;color:var(--black);}
+.s-next{position:absolute;top:3px;right:4px;font-size:8px;color:var(--accent);}
+
+/* NOTIFICATION PERMISSION BANNER */
+.notif-banner{border:1px solid var(--g4);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;background:var(--g1);}
+.notif-banner.granted{border-color:var(--g3);display:none;}
+.notif-btn{background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;padding:8px 14px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.notif-text{font-size:10px;color:var(--g6);letter-spacing:.5px;line-height:1.6;}
+
+/* STREAK */
+.streak-hero{border:1px solid var(--g3);padding:24px;text-align:center;position:relative;overflow:hidden;margin-bottom:8px;}
+.streak-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,255,255,.03) 0%,transparent 70%);}
+.streak-num{font-family:'Bebas Neue',sans-serif;font-size:80px;line-height:1;}
+.streak-fire{font-size:36px;}
+.streak-label{font-size:10px;letter-spacing:4px;color:var(--g5);text-transform:uppercase;margin-top:4px;}
+.streak-sub{font-size:11px;color:var(--g6);margin-top:8px;}
+
+/* CALENDAR */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cal-month{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:4px;}
+.cal-btn{width:36px;height:36px;border:1px solid var(--g3);background:none;color:var(--white);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.cal-btn:hover{border-color:var(--white);}
+.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;}
+.cal-day-name{text-align:center;font-size:9px;letter-spacing:1px;color:var(--g5);text-transform:uppercase;padding:4px 0;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cal-cell{aspect-ratio:1;border:1px solid var(--g2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;position:relative;}
+.cal-cell.empty{border-color:transparent;}
+.cal-cell.today{border-color:var(--white);}
+.cal-cell.success{background:var(--white);color:var(--black);border-color:var(--white);}
+.cal-cell.warned{background:var(--warn);border-color:var(--warn-b);}
+.cal-cell.warned .cal-cell-num{color:#ffaa00;}
+.cal-cell.future{opacity:.2;}
+.cal-cell-num{font-size:12px;line-height:1;}
+.cal-cell-dot{font-size:8px;margin-top:2px;}
+.cal-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:1px;color:var(--g6);}
+.legend-dot{width:12px;height:12px;border:1px solid var(--g4);}
+.legend-dot.s{background:var(--white);border-color:var(--white);}
+.legend-dot.w{background:var(--warn);border-color:var(--warn-b);}
+.legend-dot.t{background:transparent;border-color:var(--white);}
+.month-summary{border:1px solid var(--g3);padding:16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+
+/* APPS */
+.apps-info{border:1px solid var(--g3);padding:16px;margin-bottom:16px;font-size:11px;line-height:1.8;color:var(--g6);}
+.apps-info strong{color:var(--white);}
+.app-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;}
+.app-item{border:1px solid var(--g3);padding:12px 6px;text-align:center;position:relative;transition:all .3s;}
+.app-item.allowed{background:var(--white);border-color:var(--white);}
+.app-item.blocked{opacity:.35;}
+.app-item.blocked::after{content:'🔒';position:absolute;top:2px;right:4px;font-size:8px;}
+.app-emoji{font-size:24px;}
+.app-name{font-size:8px;letter-spacing:1px;color:var(--g6);margin-top:4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.app-item.allowed .app-name{color:var(--black);}
+.blocker-status{border:1px solid var(--g3);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.blocker-status .label{font-size:10px;letter-spacing:2px;color:var(--g5);text-transform:uppercase;margin-bottom:4px;}
+.blocker-status .val{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;}
+.val.locked{color:#ff4444;}
+.val.open{color:var(--white);}
+.val.standby{color:var(--g5);}
+
+/* SCHEDULE EDITOR */
+.editor-wrap{border:1px solid var(--g3);padding:16px;}
+.editor-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.editor-row:last-child{margin-bottom:0;}
+.editor-num{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--g5);width:28px;text-align:center;flex-shrink:0;}
+.time-input{flex:1;background:var(--g1);border:1px solid var(--g3);color:var(--white);font-family:'Space Mono',monospace;font-size:13px;padding:9px 12px;outline:none;transition:border .2s;}
+.time-input:focus{border-color:var(--white);}
+.del-btn{width:34px;height:34px;background:none;border:1px solid var(--g3);color:var(--g5);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.del-btn:hover{border-color:#ff4444;color:#ff4444;}
+.add-btn{width:100%;padding:12px;background:none;border:1px solid var(--g4);color:var(--g6);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;cursor:pointer;transition:all .2s;margin-top:12px;}
+.add-btn:hover{border-color:var(--white);color:var(--white);}
+.save-btn{width:100%;padding:14px;background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:4px;cursor:pointer;margin-top:10px;transition:all .2s;}
+.save-btn:hover{background:var(--g7);}
+.editor-note{font-size:10px;color:var(--g5);letter-spacing:1px;line-height:1.7;margin-top:12px;}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;background:var(--black);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;animation:fadeIn .25s ease;}
+.overlay.hidden{display:none;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.overlay-title{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:6px;text-align:center;line-height:1.1;margin-bottom:8px;}
+.overlay-sub{font-size:11px;color:var(--g5);text-align:center;letter-spacing:2px;margin-bottom:40px;line-height:1.8;max-width:300px;}
+.overlay-sub strong{color:var(--white);}
+.hold-wrap{width:100%;max-width:320px;margin-bottom:16px;}
+.hold-label{font-size:9px;letter-spacing:3px;color:var(--g5);text-align:center;margin-bottom:12px;text-transform:uppercase;}
+.hold-track{width:100%;height:56px;border:1px solid var(--g4);position:relative;overflow:hidden;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.hold-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--white);transition:width .08s linear;}
+.hold-text-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:4px;mix-blend-mode:difference;color:var(--white);pointer-events:none;}
+.skip-link{font-size:10px;color:var(--g5);letter-spacing:2px;text-align:center;cursor:pointer;text-transform:uppercase;text-decoration:underline;margin-top:16px;}
+.skip-link:hover{color:var(--g7);}
+.glass-badge{border:1px solid var(--g4);padding:8px 20px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:4px;color:var(--g5);margin-bottom:32px;}
+
+/* OVERLAY COUNTDOWN */
+.overlay-countdown{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:4px;color:var(--g5);margin-bottom:16px;text-align:center;}
+.overlay-countdown span{color:var(--white);}
+
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--white);color:var(--black);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;padding:12px 24px;z-index:9999;transition:transform .4s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;text-transform:uppercase;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+.reminder-bar{position:fixed;top:0;left:0;right:0;background:var(--white);color:var(--black);z-index:8000;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;cursor:pointer;transform:translateY(-100%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);}
+.reminder-bar.show{transform:translateY(0);}
+
+.completion{border:1px solid var(--white);padding:24px;text-align:center;margin-bottom:16px;display:none;}
+.completion.show{display:block;}
+.completion-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:4px;margin-bottom:8px;}
+.completion-sub{font-size:11px;color:var(--g5);letter-spacing:2px;}
+
+.midnight-badge{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:var(--black);border:1px solid var(--white);padding:28px 36px;z-index:9999;text-align:center;transition:transform .3s cubic-bezier(.34,1.56,.64,1);}
+.midnight-badge.show{transform:translate(-50%,-50%) scale(1);}
+.midnight-title{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:4px;}
+.midnight-sub{font-size:10px;color:var(--g5);letter-spacing:2px;margin-top:8px;}
+.midnight-close{margin-top:20px;padding:10px 24px;background:var(--white);color:var(--black);border:none;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="reminder-bar" id="reminderBar" onclick="openBlocker()">
+  💧 TIME TO DRINK WATER — TAP TO CONFIRM <span>→</span>
+</div>
+
+<div class="midnight-badge" id="midnightBadge">
+  <div style="font-size:36px;margin-bottom:8px;">🌙</div>
+  <div class="midnight-title">NEW DAY</div>
+  <div class="midnight-sub" id="midnightSub">Glasses reset · Let's go!</div>
+  <button class="midnight-close" onclick="document.getElementById('midnightBadge').classList.remove('show')">LET'S GO →</button>
+</div>
+
+<div class="overlay hidden" id="blockerOverlay">
+  <div class="overlay-title">APPS<br>LOCKED</div>
+  <div class="glass-badge" id="glassLabel">GLASS #1</div>
+  <div class="overlay-sub">Drink a full glass of water to unlock all apps.<br><strong>Free Fire &amp; Minecraft</strong> are always open.</div>
+  <div class="overlay-countdown" id="overlayCdown">Next reminder unlocks in <span id="overlayCdownVal">--:--</span></div>
+  <div class="hold-wrap">
+    <div class="hold-label">Hold 3 seconds to confirm you drank</div>
+    <div class="hold-track" id="holdTrack"
+      onmousedown="startHold()" onmouseup="stopHold()" onmouseleave="stopHold()"
+      ontouchstart="startHold(event)" ontouchend="stopHold()" ontouchcancel="stopHold()">
+      <div class="hold-fill" id="holdFill"></div>
+      <div class="hold-text-wrap" id="holdText">HOLD TO DRINK</div>
+    </div>
+  </div>
+  <div class="skip-link" onclick="closeBlocker()">Dismiss (apps stay locked)</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="tab-bar">
+  <div class="tab-bar-logo">H₂O</div>
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('home',this)">Home</button>
+    <button class="tab" onclick="showPage('streak',this)">Streak</button>
+    <button class="tab" onclick="showPage('calendar',this)">Calendar</button>
+    <button class="tab" onclick="showPage('apps',this)">Apps</button>
+    <button class="tab" onclick="showPage('schedule',this)">Schedule</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <div class="completion" id="completionBanner">
+    <div style="font-size:40px;margin-bottom:8px;">✓</div>
+    <div class="completion-title">DAILY GOAL MET</div>
+    <div class="completion-sub" id="completionSub">All glasses done · Resets at midnight 🌙</div>
+  </div>
+
+  <!-- NOTIFICATION PERMISSION -->
+  <div class="notif-banner" id="notifBanner">
+    <div class="notif-text">Enable <strong>notifications</strong> to get drink reminders even when app is in background.</div>
+    <button class="notif-btn" onclick="requestNotifPerm()">ENABLE</button>
+  </div>
+
+  <!-- COUNTDOWN TIMER TO NEXT DRINK -->
+  <div class="countdown-box" id="countdownBox">
+    <div class="cdown-left">
+      <div class="cdown-label" id="cdownLabel">Next drink in</div>
+      <div class="cdown-timer" id="cdownTimer">--:--</div>
+    </div>
+    <div class="cdown-right" id="cdownIcon">⏳</div>
+    <div class="cdown-progress" id="cdownProgress"></div>
+  </div>
+
+  <div class="big-number" id="bigNum">0</div>
+  <div class="big-denom" id="bigDenom">GLASSES TODAY · GOAL: 9</div>
+  <div class="tube-wrap" id="tubeWrap"></div>
+
+  <button class="drink-btn" id="drinkBtn" onclick="logDrink(event)">💧 I DRANK WATER</button>
+  <div class="btn-sub" id="btnSub"></div>
+
+  <div class="sec-head">Today</div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="sDrank">0</div><div class="stat-lbl">Drank</div></div>
+    <div class="stat-box"><div class="stat-val" id="sLeft">9</div><div class="stat-lbl">Left</div></div>
+    <div class="stat-box"><div class="stat-val" id="sPct">0%</div><div class="stat-lbl">Done</div></div>
+  </div>
+
+  <div class="motivation-bar">
+    <div class="mot-icon" id="motIcon">💡</div>
+    <div class="mot-text" id="motText">Loading tip…</div>
+  </div>
+
+  <div class="next-row" id="nextRow">
+    <div>
+      <div class="next-label">Next Reminder</div>
+      <div class="next-val" id="nextVal">--:--</div>
+    </div>
+    <div style="font-size:28px;opacity:.5;">⏰</div>
+  </div>
+
+  <div class="sec-head">Today's Schedule</div>
+  <div class="sched-grid" id="schedGrid"></div>
+
+  <div class="sec-head">Reset Info</div>
+  <div style="border:1px solid var(--g3);padding:14px 16px;font-size:10px;color:var(--g5);letter-spacing:1px;line-height:1.8;">
+    🌙 Glasses automatically reset at <strong style="color:var(--white)">12:00 AM</strong> midnight every day.
+  </div>
+</div>
+
+<!-- STREAK -->
+<div class="page" id="page-streak">
+  <div class="streak-hero">
+    <div class="streak-fire">🔥</div>
+    <div class="streak-num" id="streakNum">0</div>
+    <div class="streak-label">Day Streak</div>
+    <div class="streak-sub" id="streakSub">Drink any water today to start!</div>
+  </div>
+  <div class="sec-head">Stats</div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="stBest">0</div><div class="stat-lbl">Best</div></div>
+    <div class="stat-box"><div class="stat-val" id="stTotal">0</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-box"><div class="stat-val" id="stWarn">0</div><div class="stat-lbl">Warned</div></div>
+  </div>
+  <div class="sec-head">How Streak Works</div>
+  <div class="apps-info">
+    <strong>+1 streak</strong> — drink any glasses in a day<br>
+    <strong>⚠️ Warning</strong> — day ends with 0 glasses (no streak loss, just flagged)<br>
+    <strong>Streak resets</strong> — two consecutive days with 0 glasses<br>
+    <strong>Button locks</strong> — after logging a glass, button locks until next reminder time
+  </div>
+  <div class="sec-head">Last 7 Days</div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;" id="weekRow"></div>
+</div>
+
+<!-- CALENDAR -->
+<div class="page" id="page-calendar">
+  <div class="cal-nav">
+    <button class="cal-btn" onclick="calMove(-1)">‹</button>
+    <div class="cal-month" id="calMonth"></div>
+    <button class="cal-btn" onclick="calMove(1)">›</button>
+  </div>
+  <div class="month-summary" id="monthSummary"></div>
+  <div class="cal-days-header">
+    <div class="cal-day-name">Su</div><div class="cal-day-name">Mo</div>
+    <div class="cal-day-name">Tu</div><div class="cal-day-name">We</div>
+    <div class="cal-day-name">Th</div><div class="cal-day-name">Fr</div>
+    <div class="cal-day-name">Sa</div>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div class="cal-legend">
+    <div class="legend-item"><div class="legend-dot s"></div> Drank water ✓</div>
+    <div class="legend-item"><div class="legend-dot w"></div> ⚠️ No water</div>
+    <div class="legend-item"><div class="legend-dot t"></div> Today</div>
+  </div>
+</div>
+
+<!-- APPS -->
+<div class="page" id="page-apps">
+  <div class="blocker-status">
+    <div><div class="label">App Blocker</div><div class="val" id="blockerVal">STANDBY</div></div>
+    <div style="font-size:24px;">🛡️</div>
+  </div>
+  <div class="blocker-status">
+    <div><div class="label">Free Fire &amp; Minecraft</div><div class="val open">ALWAYS OPEN</div></div>
+    <div style="font-size:24px;">✅</div>
+  </div>
+  <div class="sec-head">Always Open</div>
+  <div class="app-grid" id="gamesGrid"></div>
+  <div class="sec-head">Blocked at Drink Time · Unlocked After Water</div>
+  <div class="app-grid" id="blockedGrid"></div>
+  <div class="apps-info" style="margin-top:8px;">
+    <strong>Rule:</strong> At every scheduled drink time, all apps below get blocked. Confirm you drank → apps unlock until next reminder.<br><br>
+    <strong>Free Fire &amp; Minecraft</strong> are never blocked — ever.<br><br>
+    <strong>Tip:</strong> Use Android <strong>Digital Wellbeing</strong> or <strong>Family Link</strong> for real device-level app blocking.
+  </div>
+</div>
+
+<!-- SCHEDULE EDITOR -->
+<div class="page" id="page-schedule">
+  <div class="sec-head">Edit Reminders</div>
+  <div class="apps-info">
+    Add, remove or change any reminder time. Tap <strong>Save Schedule</strong> to apply. The in-app countdown timer will update automatically.
+  </div>
+  <div class="editor-wrap" id="editorWrap"></div>
+  <div class="sec-head">Goal (Glasses Per Day)</div>
+  <div style="border:1px solid var(--g3);padding:16px;display:flex;align-items:center;gap:12px;">
+    <div style="font-size:11px;color:var(--g5);letter-spacing:1px;flex:1;">Number of reminders = glasses goal</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;" id="goalDisplay">9</div>
+  </div>
+</div>
+
+<script>
+// ══════════ HELPERS ══════════
+function todayKey(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function pad(n){return String(n).padStart(2,'0');}
+function fmt12(t24){const [h,m]=t24.split(':').map(Number);const ampm=h>=12?'PM':'AM';return `${h%12||12}:${pad(m)} ${ampm}`;}
+function getPrevDate(k){const d=new Date(k);d.setDate(d.getDate()-1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+function minsFromMidnight(t24){const [h,m]=t24.split(':').map(Number);return h*60+m;}
+function nowMins(){const n=new Date();return n.getHours()*60+n.getMinutes();}
+function secsFromMidnight(){const n=new Date();return n.getHours()*3600+n.getMinutes()*60+n.getSeconds();}
+
+// ══════════ DEFAULT SCHEDULE ══════════
+const DEFAULT_SCHEDULE=["07:00","08:30","10:00","11:30","13:00","14:30","16:00","18:00","20:00"];
+
+// ══════════ STATE ══════════
+function loadState(){
+  return {
+    drank:parseInt(localStorage.getItem('hg5_drank')||'0'),
+    date:localStorage.getItem('hg5_date')||'',
+    streak:parseInt(localStorage.getItem('hg5_streak')||'0'),
+    bestStreak:parseInt(localStorage.getItem('hg5_best')||'0'),
+    history:JSON.parse(localStorage.getItem('hg5_history')||'{}'),
+    schedule:JSON.parse(localStorage.getItem('hg5_schedule')||'null')||DEFAULT_SCHEDULE,
+    btnLockedUntil:parseInt(localStorage.getItem('hg5_btnLock')||'0'),
+  };
+}
+function saveState(s){
+  localStorage.setItem('hg5_drank',s.drank);
+  localStorage.setItem('hg5_date',s.date);
+  localStorage.setItem('hg5_streak',s.streak);
+  localStorage.setItem('hg5_best',s.bestStreak);
+  localStorage.setItem('hg5_history',JSON.stringify(s.history));
+  localStorage.setItem('hg5_schedule',JSON.stringify(s.schedule));
+  localStorage.setItem('hg5_btnLock',s.btnLockedUntil);
+}
+
+let S=loadState();
+
+// ══════════ MIDNIGHT RESET ══════════
+function checkMidnightReset(){
+  const today=todayKey();
+  if(S.date!==today&&S.date!==''){
+    const prev=S.drank,prevDate=S.date;
+    if(prev===0){
+      S.history[prevDate]={drank:0,success:false,warned:true};
+      const ppData=S.history[getPrevDate(prevDate)];
+      if(ppData&&ppData.drank===0) S.streak=0;
+    } else {
+      S.history[prevDate]={drank:prev,success:true,warned:false};
+      S.streak++;
+      if(S.streak>S.bestStreak) S.bestStreak=S.streak;
+    }
+    S.drank=0;S.btnLockedUntil=0;S.date=today;saveState(S);
+    const sub=prev===0?`Yesterday: ⚠️ 0 glasses · Start fresh!`:`Yesterday: ${prev} glasses ✓ · Streak: ${S.streak} days`;
+    document.getElementById('midnightSub').textContent=sub;
+    document.getElementById('midnightBadge').classList.add('show');
+  } else if(S.date===''){S.date=today;saveState(S);}
+}
+checkMidnightReset();
+setInterval(()=>{checkMidnightReset();fullUpdate();},60000);
+
+// ══════════ BUTTON LOCK LOGIC ══════════
+function setButtonLockUntilNext(glassIndex){
+  const sched=getSortedSchedule();
+  const nextTime=sched[glassIndex];
+  if(!nextTime){
+    const midnight=new Date();midnight.setHours(24,0,0,0);
+    S.btnLockedUntil=midnight.getTime();
+  } else {
+    const [h,m]=nextTime.split(':').map(Number);
+    const unlock=new Date();unlock.setHours(h,m,0,0);
+    if(unlock.getTime()>Date.now()) S.btnLockedUntil=unlock.getTime();
+    else S.btnLockedUntil=0;
+  }
+  saveState(S);
+}
+function isButtonLocked(){
+  if(S.drank>=getSortedSchedule().length) return false;
+  return S.btnLockedUntil>Date.now();
+}
+function btnLockCountdown(){
+  const ms=S.btnLockedUntil-Date.now();
+  if(ms<=0) return '';
+  const totalMins=Math.ceil(ms/60000);
+  const h=Math.floor(totalMins/60),m=totalMins%60;
+  if(h>0) return `Unlocks in ${h}h ${m}m`;
+  return `Unlocks in ${m} min`;
+}
+
+// ══════════ SORTED SCHEDULE ══════════
+function getSortedSchedule(){
+  return [...S.schedule].sort((a,b)=>minsFromMidnight(a)-minsFromMidnight(b));
+}
+
+// ══════════ TABS ══════════
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='calendar') renderCalendar();
+  if(id==='streak') renderStreak();
+  if(id==='apps') renderApps();
+  if(id==='schedule') renderEditor();
+}
+
+// ══════════ LOG DRINK (main button) ══════════
+function logDrink(e){
+  const sched=getSortedSchedule();
+  if(S.drank>=sched.length) return;
+  if(isButtonLocked()) return;
+  const btn=e.currentTarget;
+  const r=document.createElement('span');r.className='ripple';
+  const rect=btn.getBoundingClientRect();
+  r.style.cssText=`width:80px;height:80px;left:${e.clientX-rect.left-40}px;top:${e.clientY-rect.top-40}px`;
+  btn.appendChild(r);setTimeout(()=>r.remove(),700);
+  S.drank++;S.date=todayKey();pendingReminder=false;
+  document.getElementById('reminderBar').classList.remove('show');
+  setButtonLockUntilNext(S.drank);
+  saveState(S);fullUpdate();
+  showToast('GLASS '+S.drank+' LOGGED ✓');
+}
+
+// ══════════ HOLD BUTTON (overlay) ══════════
+let holdInterval=null,holdPct=0,pendingReminder=false;
+function startHold(e){
+  if(e) e.preventDefault();
+  holdPct=0;clearInterval(holdInterval);
+  holdInterval=setInterval(()=>{
+    holdPct+=100/30;
+    const c=Math.min(holdPct,100);
+    document.getElementById('holdFill').style.width=c+'%';
+    const secs=Math.ceil((100-holdPct)/(100/3));
+    document.getElementById('holdText').textContent=holdPct<100?`HOLD… ${Math.max(1,secs)}s`:'✓ DRANK!';
+    if(holdPct>=100){clearInterval(holdInterval);confirmDrank();}
+  },100);
+}
+function stopHold(){
+  clearInterval(holdInterval);
+  if(holdPct<100){holdPct=0;document.getElementById('holdFill').style.width='0%';document.getElementById('holdText').textContent='HOLD TO DRINK';}
+}
+function confirmDrank(){
+  const sched=getSortedSchedule();
+  if(S.drank>=sched.length){closeBlocker();return;}
+  S.drank++;S.date=todayKey();pendingReminder=false;
+  document.getElementById('reminderBar').classList.remove('show');
+  setButtonLockUntilNext(S.drank);
+  saveState(S);fullUpdate();
+  setTimeout(()=>{closeBlocker();showToast('GLASS '+S.drank+' LOGGED ✓');},400);
+}
+
+// ══════════ BLOCKER ══════════
+function openBlocker(){
+  document.getElementById('glassLabel').textContent=`GLASS #${S.drank+1} OF ${getSortedSchedule().length}`;
+  holdPct=0;
+  document.getElementById('holdFill').style.width='0%';
+  document.getElementById('holdText').textContent='HOLD TO DRINK';
+  document.getElementById('blockerOverlay').classList.remove('hidden');
+  updateOverlayCdown();
+}
+function closeBlocker(){
+  document.getElementById('blockerOverlay').classList.add('hidden');
+  clearInterval(holdInterval);
+}
+function updateOverlayCdown(){
+  const sched=getSortedSchedule();
+  if(S.drank<sched.length){
+    const nextT=sched[S.drank];
+    const [h,m]=nextT.split(':').map(Number);
+    const target=new Date();target.setHours(h,m,0,0);
+    const diff=target-Date.now();
+    if(diff>0){
+      const hh=Math.floor(diff/3600000);
+      const mm=Math.floor((diff%3600000)/60000);
+      const ss=Math.floor((diff%60000)/1000);
+      document.getElementById('overlayCdownVal').textContent=`${hh>0?hh+'h ':''} ${pad(mm)}m ${pad(ss)}s`;
+    } else {
+      document.getElementById('overlayCdownVal').textContent='NOW';
+    }
+  }
+}
+
+// ══════════ COUNTDOWN TIMER ══════════
+// Calculates seconds until next scheduled reminder
+function getNextReminderInfo(){
+  const sched=getSortedSchedule();
+  if(S.drank>=sched.length) return null; // all done
+  const nowSecs=secsFromMidnight();
+  // find next reminder not yet drank
+  for(let i=S.drank;i<sched.length;i++){
+    const [h,mm]=sched[i].split(':').map(Number);
+    const tSecs=h*3600+mm*60;
+    if(tSecs>nowSecs){
+      // seconds until this reminder
+      const diff=tSecs-nowSecs;
+      // total interval: from previous reminder (or midnight) to this one
+      let prevSecs=0;
+      if(i>0){const [ph,pm]=sched[i-1].split(':').map(Number);prevSecs=ph*3600+pm*60;}
+      const totalInterval=tSecs-prevSecs;
+      return {secsLeft:diff,targetTime:sched[i],totalInterval,idx:i};
+    }
+  }
+  return null; // all today's reminders passed
+}
+
+function renderCountdown(){
+  const info=getNextReminderInfo();
+  const box=document.getElementById('countdownBox');
+  const timerEl=document.getElementById('cdownTimer');
+  const labelEl=document.getElementById('cdownLabel');
+  const iconEl=document.getElementById('cdownIcon');
+  const progEl=document.getElementById('cdownProgress');
+
+  if(pendingReminder){
+    box.className='countdown-box fire';
+    timerEl.className='cdown-timer fire';
+    timerEl.textContent='DRINK NOW';
+    labelEl.textContent='Time to hydrate!';
+    iconEl.textContent='💧';
+    progEl.style.width='100%';
+    progEl.className='cdown-progress urgent';
+    return;
+  }
+
+  if(!info||S.drank>=getSortedSchedule().length){
+    box.className='countdown-box';
+    timerEl.className='cdown-timer';
+    timerEl.textContent=S.drank>=getSortedSchedule().length?'DONE ✓':'--:--';
+    labelEl.textContent=S.drank>=getSortedSchedule().length?'Daily goal complete':'No more reminders today';
+    iconEl.textContent=S.drank>=getSortedSchedule().length?'🏆':'🌙';
+    progEl.style.width='100%';
+    return;
+  }
+
+  const {secsLeft,totalInterval,idx}=info;
+  const h=Math.floor(secsLeft/3600);
+  const m=Math.floor((secsLeft%3600)/60);
+  const s=secsLeft%60;
+  const display=h>0?`${h}:${pad(m)}:${pad(s)}`:`${pad(m)}:${pad(s)}`;
+
+  const isUrgent=secsLeft<=300; // 5 min warning
+  const isVeryUrgent=secsLeft<=60;
+
+  timerEl.textContent=display;
+  labelEl.textContent=`Glass ${idx+1} reminder in`;
+  iconEl.textContent=isUrgent?'⚡':'⏳';
+
+  box.className='countdown-box'+(isUrgent?' urgent':'');
+  timerEl.className='cdown-timer'+(isUrgent?' urgent':'');
+  progEl.className='cdown-progress'+(isUrgent?' urgent':'');
+
+  // Progress bar: shows how much of the interval has elapsed
+  const elapsed=totalInterval-secsLeft;
+  const pct=Math.min(100,Math.max(0,(elapsed/totalInterval)*100));
+  progEl.style.width=pct+'%';
+}
+
+// Run every second for smooth countdown
+setInterval(()=>{
+  renderCountdown();
+  if(document.getElementById('blockerOverlay')&&!document.getElementById('blockerOverlay').classList.contains('hidden')){
+    updateOverlayCdown();
+  }
+  // update button lock sub text every second too
+  if(isButtonLocked()) document.getElementById('btnSub').textContent=btnLockCountdown();
+},1000);
+
+// ══════════ FULL UPDATE ══════════
+function fullUpdate(){
+  const sched=getSortedSchedule();
+  const goal=sched.length;
+  const d=S.drank;
+
+  document.getElementById('bigNum').textContent=d;
+  document.getElementById('bigDenom').textContent=`GLASSES TODAY · GOAL: ${goal}`;
+
+  // Tubes
+  const wrap=document.getElementById('tubeWrap');wrap.innerHTML='';
+  for(let i=0;i<goal;i++){
+    const t=document.createElement('div');
+    t.className='tube'+(i<d?' done':'')+(i===d&&d<goal?' active':'');
+    const f=document.createElement('div');f.className='tube-fill';
+    t.appendChild(f);wrap.appendChild(t);
+  }
+
+  // Stats
+  document.getElementById('sDrank').textContent=d;
+  document.getElementById('sLeft').textContent=Math.max(0,goal-d);
+  document.getElementById('sPct').textContent=Math.round(d/goal*100)+'%';
+
+  // Button state
+  const btn=document.getElementById('drinkBtn');
+  const sub=document.getElementById('btnSub');
+  if(d>=goal){
+    btn.disabled=true;
+    btn.className='drink-btn done-today';
+    btn.textContent='✓ GOAL COMPLETE — RESETS AT MIDNIGHT';
+    sub.textContent='';
+    document.getElementById('completionBanner').classList.add('show');
+    document.getElementById('completionSub').textContent=`All ${goal} glasses done · Resets at midnight 🌙`;
+  } else if(isButtonLocked()){
+    btn.disabled=true;
+    btn.className='drink-btn locked-until';
+    btn.textContent='⏳ NEXT REMINDER: '+(d<sched.length?fmt12(sched[d]):'--');
+    sub.textContent=btnLockCountdown();
+    document.getElementById('completionBanner').classList.remove('show');
+  } else if(pendingReminder){
+    btn.disabled=false;
+    btn.className='drink-btn reminder-active';
+    btn.textContent='💧 DRINK NOW — APPS LOCKED';
+    sub.textContent='Tap to log your glass and unlock apps';
+    document.getElementById('completionBanner').classList.remove('show');
+  } else {
+    btn.disabled=false;
+    btn.className='drink-btn';
+    btn.textContent='💧 I DRANK WATER';
+    sub.textContent='';
+    document.getElementById('completionBanner').classList.remove('show');
+  }
+
+  // Schedule grid
+  const now=new Date();
+  const sg=document.getElementById('schedGrid');sg.innerHTML='';
+  const nextIdx=S.drank; // index of next glass to drink
+  sched.forEach((t,i)=>{
+    const [h,m]=t.split(':').map(Number);
+    const dt=new Date();dt.setHours(h,m,0,0);
+    const done=i<d,active=!done&&dt<=now;
+    const isNext=i===nextIdx&&!done;
+    const el=document.createElement('div');
+    el.className='sched-item'+(done?' done':'')+(active?' active':'')+(isNext&&!active?' next-up':'');
+    el.innerHTML=`<div class="s-time">${fmt12(t)}</div><div class="s-num">Glass ${i+1}</div>${done?'<div class="s-check">✓</div>':''}${isNext&&!active?'<div class="s-next">→</div>':''}`;
+    sg.appendChild(el);
+  });
+
+  // Next reminder row
+  const nextRow=document.getElementById('nextRow');
+  if(d>=goal){nextRow.style.display='none';}
+  else{nextRow.style.display='flex';document.getElementById('nextVal').textContent=d<sched.length?fmt12(sched[d]):'Done!';}
+
+  // Notification banner
+  if(Notification&&Notification.permission==='granted'){
+    document.getElementById('notifBanner').className='notif-banner granted';
+  }
+
+  renderApps();
+  renderCountdown();
+}
+
+// ══════════ NOTIFICATIONS ══════════
+function requestNotifPerm(){
+  if(!('Notification' in window)){showToast('NOTIFICATIONS NOT SUPPORTED');return;}
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){
+      document.getElementById('notifBanner').className='notif-banner granted';
+      showToast('NOTIFICATIONS ENABLED ✓');
+      // Register service worker for background notifications if possible
+      if('serviceWorker' in navigator) registerSW();
+    } else {
+      showToast('PERMISSION DENIED');
+    }
+  });
+}
+
+function sendNotification(title,body){
+  if(Notification&&Notification.permission==='granted'){
+    try{
+      new Notification(title,{
+        body:body,
+        icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💧</text></svg>',
+        badge:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💧</text></svg>',
+        requireInteraction:true,
+        tag:'hydroguard-reminder'
+      });
+    } catch(e){console.log('Notification error:',e);}
+  }
+}
+
+// ══════════ SERVICE WORKER (for background notifications) ══════════
+const SW_CODE=`
+self.addEventListener('message',e=>{
+  if(e.data&&e.data.type==='SCHEDULE'){
+    const schedules=e.data.schedules;
+    // Store schedules
+    self.SCHEDULES=schedules;
+  }
+});
+// Check every minute if it's time to notify
+setInterval(()=>{
+  if(!self.SCHEDULES) return;
+  const now=new Date();
+  const h=now.getHours(),m=now.getMinutes();
+  const t=h+':'+String(m).padStart(2,'0');
+  if(self.SCHEDULES.includes(t)){
+    self.registration.showNotification('💧 Time to Drink Water!',{
+      body:'Open HydroGuard and log your glass to unlock your apps.',
+      requireInteraction:true,
+      tag:'hydroguard-reminder'
+    });
+  }
+},60000);
+`;
+
+function registerSW(){
+  try{
+    const blob=new Blob([SW_CODE],{type:'application/javascript'});
+    const url=URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url).then(reg=>{
+      // Send schedule to SW
+      if(reg.active){
+        reg.active.postMessage({type:'SCHEDULE',schedules:S.schedule});
+      }
+    }).catch(()=>{});
+  } catch(e){}
+}
+
+// ══════════ REMINDER CHECK ══════════
+function checkReminders(){
+  if(S.drank>=getSortedSchedule().length) return;
+  const nm=nowMins();
+  const sched=getSortedSchedule();
+  const idx=sched.findIndex(t=>minsFromMidnight(t)===nm);
+  if(idx!==-1&&idx>=S.drank&&!pendingReminder){
+    pendingReminder=true;
+    S.btnLockedUntil=0;saveState(S);
+    document.getElementById('reminderBar').classList.add('show');
+    fullUpdate();
+    // Send OS notification
+    sendNotification('💧 Time to Drink Water!',`Glass ${idx+1} of ${sched.length} — Apps are now locked until you drink.`);
+    setTimeout(()=>{if(pendingReminder) openBlocker();},4000);
+  }
+}
+setInterval(checkReminders,60000);
+checkReminders();
+
+// ══════════ TIPS ══════════
+const TIPS=[
+  {icon:'🧠',text:'<strong>Brain boost:</strong> Mild dehydration reduces focus & memory by up to 10%.'},
+  {icon:'⚡',text:'<strong>Energy:</strong> Water carries oxygen to cells — more water = more energy.'},
+  {icon:'🏋️',text:'<strong>Muscles:</strong> Dehydration causes cramps. Drink up before gaming sessions.'},
+  {icon:'💧',text:'<strong>Skin:</strong> Staying hydrated keeps your skin clear and glowing.'},
+  {icon:'🎮',text:'<strong>Focus:</strong> Pro gamers stay hydrated to maintain reaction time & focus.'},
+  {icon:'🌡️',text:'<strong>Cool down:</strong> Water regulates your body temperature throughout the day.'},
+  {icon:'💪',text:'<strong>Immune:</strong> Water flushes toxins — your body\'s natural detox.'},
+];
+function rotateTip(){const t=TIPS[Math.floor(Math.random()*TIPS.length)];document.getElementById('motIcon').textContent=t.icon;document.getElementById('motText').innerHTML=t.text;}
+rotateTip();setInterval(rotateTip,30000);
+
+// ══════════ STREAK PAGE ══════════
+function renderStreak(){
+  document.getElementById('streakNum').textContent=S.streak;
+  document.getElementById('streakSub').textContent=S.streak>0?`${S.streak} day${S.streak>1?'s':''} in a row!`:'Drink water today to start!';
+  const vals=Object.values(S.history);
+  document.getElementById('stBest').textContent=S.bestStreak;
+  document.getElementById('stTotal').textContent=vals.filter(v=>v.success).length;
+  document.getElementById('stWarn').textContent=vals.filter(v=>v.warned).length;
+  const row=document.getElementById('weekRow');row.innerHTML='';
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const key=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const isToday=key===todayKey(),data=S.history[key];
+    let bg='';
+    if(data&&data.success) bg='background:#fff;color:#000;';
+    else if(data&&data.warned) bg='background:var(--warn);';
+    const cell=document.createElement('div');
+    cell.style.cssText=`border:1px solid ${isToday?'#fff':'#2a2a2a'};padding:10px 4px;text-align:center;${bg}`;
+    const num=data?data.drank:(isToday?S.drank:'-');
+    const icon=data?(data.success?'✓':'⚠'):(isToday&&S.drank>0?'↑':'');
+    cell.innerHTML=`<div style="font-size:10px;">${['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()]}</div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;">${num}</div><div style="font-size:8px;">${icon}</div>`;
+    row.appendChild(cell);
+  }
+}
+
+// ══════════ CALENDAR ══════════
+let calYear=new Date().getFullYear(),calMon=new Date().getMonth();
+function calMove(dir){calMon+=dir;if(calMon>11){calMon=0;calYear++;}if(calMon<0){calMon=11;calYear--;}renderCalendar();}
+function renderCalendar(){
+  const months=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+  document.getElementById('calMonth').textContent=months[calMon]+' '+calYear;
+  const today=new Date(),todayStr=todayKey();
+  const firstDay=new Date(calYear,calMon,1).getDay();
+  const daysInMonth=new Date(calYear,calMon+1,0).getDate();
+  const grid=document.getElementById('calGrid');grid.innerHTML='';
+  let mS=0,mW=0,mT=0;
+  for(let i=0;i<firstDay;i++){const e=document.createElement('div');e.className='cal-cell empty';grid.appendChild(e);}
+  for(let day=1;day<=daysInMonth;day++){
+    const key=`${calYear}-${pad(calMon+1)}-${pad(day)}`;
+    const cellDate=new Date(calYear,calMon,day);
+    const isFuture=cellDate>today&&key!==todayStr,isToday=key===todayStr;
+    const data=S.history[key];
+    let cls='cal-cell',dot='';
+    if(isFuture) cls+=' future';
+    else if(data&&data.success){cls+=' success';dot='💧';mS++;mT++;}
+    else if(data&&data.warned){cls+=' warned';dot='⚠';mW++;mT++;}
+    else if(isToday){cls+=' today';dot=S.drank>0?S.drank+'💧':'';}
+    const cell=document.createElement('div');cell.className=cls;
+    cell.innerHTML=`<div class="cal-cell-num">${day}</div><div class="cal-cell-dot">${dot}</div>`;
+    grid.appendChild(cell);
+  }
+  document.getElementById('monthSummary').innerHTML=`
+    <div class="stat-box"><div class="stat-val" style="font-size:22px;">${mS}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-box"><div class="stat-val" style="font-size:22px;">${mW}</div><div class="stat-lbl">Warned</div></div>
+    <div class="stat-box"><div class="stat-val" style="font-size:22px;">${mT?Math.round(mS/mT*100):0}%</div><div class="stat-lbl">Rate</div></div>`;
+}
+
+// ══════════ APPS ══════════
+const GAMES_APPS=[{e:'🔫',n:'Free Fire'},{e:'⛏️',n:'Minecraft'}];
+const BLOCKED_APPS=[
+  {e:'📸',n:'Instagram'},{e:'🎵',n:'TikTok'},{e:'▶️',n:'YouTube'},
+  {e:'📱',n:'Facebook'},{e:'🐦',n:'Twitter'},{e:'👻',n:'Snapchat'},
+  {e:'🎮',n:'PUBG'},{e:'🏆',n:'Clash'},{e:'🎯',n:'Roblox'},
+  {e:'📺',n:'Netflix'},{e:'🎵',n:'Spotify'},{e:'💬',n:'WhatsApp'},
+];
+function renderApps(){
+  const isBlocked=pendingReminder;
+  const gg=document.getElementById('gamesGrid');gg.innerHTML='';
+  GAMES_APPS.forEach(a=>{const el=document.createElement('div');el.className='app-item allowed';el.innerHTML=`<div class="app-emoji">${a.e}</div><div class="app-name">${a.n}</div>`;gg.appendChild(el);});
+  const bg=document.getElementById('blockedGrid');bg.innerHTML='';
+  BLOCKED_APPS.forEach(a=>{const el=document.createElement('div');el.className='app-item '+(isBlocked?'blocked':'allowed');el.innerHTML=`<div class="app-emoji">${a.e}</div><div class="app-name">${a.n}</div>`;bg.appendChild(el);});
+  document.getElementById('blockerVal').textContent=isBlocked?'BLOCKING NOW':'STANDBY';
+  document.getElementById('blockerVal').className='val '+(isBlocked?'locked':'standby');
+}
+
+// ══════════ SCHEDULE EDITOR ══════════
+function renderEditor(){
+  const wrap=document.getElementById('editorWrap');wrap.innerHTML='';
+  const sched=getSortedSchedule();
+  sched.forEach((t,i)=>{
+    const row=document.createElement('div');row.className='editor-row';
+    row.innerHTML=`
+      <div class="editor-num">${i+1}</div>
+      <input class="time-input" type="time" value="${t}" data-idx="${i}" onchange="updateTime(this)">
+      <button class="del-btn" onclick="deleteTime(${i})" title="Remove">✕</button>`;
+    wrap.appendChild(row);
+  });
+  const add=document.createElement('button');add.className='add-btn';add.textContent='+ ADD REMINDER';
+  add.onclick=addTime;wrap.appendChild(add);
+  const save=document.createElement('button');save.className='save-btn';save.textContent='SAVE SCHEDULE';
+  save.onclick=saveSchedule;wrap.appendChild(save);
+  const note=document.createElement('div');note.className='editor-note';
+  note.innerHTML='⚠️ Changing the schedule resets the drink button lock to match new times. Goal = number of reminders set. Countdown timer updates live after saving.';
+  wrap.appendChild(note);
+  document.getElementById('goalDisplay').textContent=sched.length;
+}
+function updateTime(input){
+  const sched=[...S.schedule];sched[parseInt(input.dataset.idx)]=input.value;S.schedule=sched;
+}
+function deleteTime(idx){
+  if(S.schedule.length<=1){showToast('NEED AT LEAST 1 REMINDER');return;}
+  S.schedule.splice(idx,1);renderEditor();
+}
+function addTime(){
+  if(S.schedule.length>=12){showToast('MAX 12 REMINDERS');return;}
+  const sched=getSortedSchedule();
+  const last=sched[sched.length-1]||'07:00';
+  const [h,m]=last.split(':').map(Number);
+  const newH=(h+1)%24;
+  S.schedule.push(`${pad(newH)}:${pad(m)}`);
+  renderEditor();
+}
+function saveSchedule(){
+  const inputs=document.querySelectorAll('.time-input');
+  S.schedule=Array.from(inputs).map(i=>i.value).filter(Boolean);
+  S.btnLockedUntil=0;
+  saveState(S);
+  fullUpdate();
+  showToast('SCHEDULE SAVED ✓');
+  renderEditor();
+  // Update service worker with new schedule
+  if('serviceWorker' in navigator&&navigator.serviceWorker.controller){
+    navigator.serviceWorker.controller.postMessage({type:'SCHEDULE',schedules:S.schedule});
+  }
+}
+
+// ══════════ TOAST ══════════
+let toastTO;
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTO);toastTO=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ══════════ INIT ══════════
+fullUpdate();
+renderApps();
+
+// Check notification permission on load
+if(Notification&&Notification.permission==='granted'){
+  document.getElementById('notifBanner').className='notif-banner granted';
+  registerSW();
+}
+</script>
+</body>
+</html>
