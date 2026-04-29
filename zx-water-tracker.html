@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ZX Water Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #000000;
+    --white: #ffffff;
+    --gray-dark: #111111;
+    --gray-mid: #222222;
+    --gray-light: #444444;
+    --gray-muted: #888888;
+    --border: #333333;
+    --accent: #ffffff;
+    --glass-filled: #ffffff;
+    --glass-empty: #1a1a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    max-width: 420px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 20px 20px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--black);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .app-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 6px;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .app-subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gray-muted);
+    letter-spacing: 3px;
+    margin-top: 2px;
+    margin-bottom: 14px;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 4px;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--gray-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-top: 2px solid transparent;
+    text-transform: uppercase;
+  }
+
+  .tab.active {
+    color: var(--white);
+    border-top: 2px solid var(--white);
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 20px; animation: fadeIn 0.2s ease; }
+  .screen.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── HOME SCREEN ── */
+  .date-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+  }
+
+  .progress-ring-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin-bottom: 28px;
+  }
+
+  .ring-svg {
+    transform: rotate(-90deg);
+  }
+
+  .ring-bg { fill: none; stroke: var(--gray-mid); stroke-width: 6; }
+  .ring-fg {
+    fill: none;
+    stroke: var(--white);
+    stroke-width: 6;
+    stroke-linecap: square;
+    stroke-dasharray: 502;
+    stroke-dashoffset: 502;
+    transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .ring-center {
+    position: absolute;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .ring-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .ring-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+  }
+
+  /* GLASSES GRID */
+  .glasses-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gray-muted);
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .glasses-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .glass-btn {
+    aspect-ratio: 1;
+    border: 1.5px solid var(--border);
+    background: var(--glass-empty);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .glass-btn.filled {
+    background: var(--white);
+    border-color: var(--white);
+  }
+
+  .glass-btn.filled .glass-icon { filter: invert(1); }
+  .glass-btn.filled .glass-num { color: var(--black); }
+
+  .glass-btn:active { transform: scale(0.94); }
+
+  .glass-icon {
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .glass-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    margin-top: 2px;
+  }
+
+  .glass-btn.filled .glass-num { color: var(--gray-light); }
+
+  /* ACTION BUTTONS */
+  .action-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 14px;
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-primary:active { opacity: 0.8; transform: scale(0.98); }
+
+  .btn-secondary {
+    flex: 1;
+    padding: 14px;
+    background: transparent;
+    color: var(--white);
+    border: 1.5px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-secondary:active { border-color: var(--white); }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    background: var(--gray-dark);
+  }
+
+  .status-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+  }
+
+  .status-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--white);
+  }
+
+  .status-value.done { color: var(--white); }
+
+  /* NOTIFICATION PERMISSION */
+  .notif-banner {
+    display: none;
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    padding: 12px;
+    margin-bottom: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gray-muted);
+    letter-spacing: 1px;
+    line-height: 1.6;
+  }
+
+  .notif-banner.show { display: block; }
+
+  .notif-btn {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 14px;
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+
+  /* ── SCHEDULE SCREEN ── */
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+  }
+
+  .section-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .add-schedule-box {
+    border: 1.5px solid var(--border);
+    padding: 16px;
+    margin-bottom: 20px;
+    background: var(--gray-dark);
+  }
+
+  .input-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+
+  .time-input {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    padding: 10px 12px;
+    outline: none;
+    appearance: none;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+
+  .time-input:focus { border-color: var(--white); }
+
+  .text-input {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+
+  .text-input:focus { border-color: var(--white); }
+  .text-input::placeholder { color: var(--gray-light); }
+
+  .add-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--white);
+    color: var(--black);
+    border: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+
+  .add-btn:active { opacity: 0.8; }
+
+  .schedule-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .schedule-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    background: var(--gray-dark);
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+  .schedule-item.triggered { border-color: var(--white); }
+
+  .sched-left { display: flex; flex-direction: column; }
+
+  .sched-time {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 3px;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .sched-note {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .sched-right { display: flex; align-items: center; gap: 10px; }
+
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    cursor: pointer;
+  }
+
+  .toggle-switch input { display: none; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    background: var(--gray-muted);
+    transition: all 0.2s;
+  }
+
+  .toggle-switch input:checked ~ .toggle-track { background: var(--white); }
+  .toggle-switch input:checked ~ .toggle-thumb { left: 21px; background: var(--black); }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--gray-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.15s;
+  }
+
+  .delete-btn:hover { color: var(--white); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    border: 1px dashed var(--border);
+  }
+
+  /* ── STATS SCREEN ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .stat-card {
+    border: 1px solid var(--border);
+    background: var(--gray-dark);
+    padding: 16px 12px;
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 2px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .stat-unit {
+    font-size: 18px;
+    color: var(--gray-muted);
+  }
+
+  .stat-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  .week-bar-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    margin: 20px 0 10px;
+  }
+
+  .week-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 80px;
+    margin-bottom: 20px;
+  }
+
+  .week-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .week-bar {
+    width: 100%;
+    background: var(--white);
+    min-height: 2px;
+    transition: height 0.4s ease;
+  }
+
+  .week-bar.today { background: var(--white); }
+  .week-bar.past { background: var(--gray-light); }
+  .week-bar.empty { background: var(--gray-mid); }
+
+  .week-day {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--gray-muted);
+    letter-spacing: 1px;
+  }
+
+  .week-day.today { color: var(--white); }
+
+  /* ── SETTINGS SCREEN ── */
+  .settings-section { margin-bottom: 24px; }
+
+  .settings-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 4px;
+    margin-bottom: 12px;
+    color: var(--gray-muted);
+  }
+
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setting-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--white);
+  }
+
+  .setting-desc {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .goal-input {
+    width: 60px;
+    background: var(--black);
+    border: 1px solid var(--border);
+    color: var(--white);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    padding: 4px 8px;
+    text-align: center;
+    outline: none;
+  }
+
+  .reset-btn {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    color: var(--gray-muted);
+    border: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    margin-top: 8px;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover { border-color: var(--white); color: var(--white); }
+  .reset-btn:active { background: var(--white); color: var(--black); }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--white);
+    color: var(--black);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 12px 24px;
+    z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 2px; }
+  ::-webkit-scrollbar-track { background: var(--black); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .notif-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--gray-muted);
+    letter-spacing: 2px;
+    text-align: right;
+  }
+
+  .notif-status.granted { color: #aaa; }
+  .notif-status.denied { color: #666; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="app-title">ZX WATER</div>
+  <div class="app-subtitle">DAILY HYDRATION TRACKER</div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('home')">HOME</div>
+    <div class="tab" onclick="switchTab('schedule')">SCHEDULE</div>
+    <div class="tab" onclick="switchTab('stats')">STATS</div>
+    <div class="tab" onclick="switchTab('settings')">SETUP</div>
+  </div>
+</div>
+
+<!-- ── HOME ── -->
+<div class="screen active" id="screen-home">
+
+  <div class="notif-banner" id="notifBanner">
+    ⚠ NOTIFICATIONS DISABLED<br>
+    Enable notifications to receive water reminders at your scheduled times.
+    <br><button class="notif-btn" onclick="requestNotifPermission()">ENABLE NOTIFICATIONS</button>
+  </div>
+
+  <div class="date-display" id="dateDisplay">—</div>
+
+  <div class="progress-ring-container">
+    <svg class="ring-svg" width="180" height="180" viewBox="0 0 180 180">
+      <circle class="ring-bg" cx="90" cy="90" r="80"/>
+      <circle class="ring-fg" id="ringFg" cx="90" cy="90" r="80"/>
+    </svg>
+    <div class="ring-center">
+      <div class="ring-count" id="ringCount">0</div>
+      <div class="ring-label">/ <span id="ringGoal">8</span> GLASSES</div>
+    </div>
+  </div>
+
+  <div class="glasses-label">TAP TO LOG A GLASS</div>
+  <div class="glasses-grid" id="glassesGrid"></div>
+
+  <div class="action-row">
+    <button class="btn-primary" onclick="drinkGlass()">+ DRINK</button>
+    <button class="btn-secondary" onclick="undoGlass()">UNDO</button>
+  </div>
+
+  <div class="status-bar">
+    <div>
+      <div class="status-label">REMAINING</div>
+      <div class="status-value" id="statusRemaining">8</div>
+    </div>
+    <div style="text-align:center">
+      <div class="status-label">INTAKE (ML)</div>
+      <div class="status-value" id="statusMl">0</div>
+    </div>
+    <div style="text-align:right">
+      <div class="status-label">STATUS</div>
+      <div class="status-value" id="statusText">PENDING</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── SCHEDULE ── -->
+<div class="screen" id="screen-schedule">
+  <div class="section-title">SCHEDULE</div>
+  <div class="section-sub">SET YOUR REMINDER TIMES</div>
+
+  <div class="add-schedule-box">
+    <div class="input-label">TIME</div>
+    <input type="time" class="time-input" id="schedTimeInput">
+    <div class="input-label">NOTE (OPTIONAL)</div>
+    <input type="text" class="text-input" id="schedNoteInput" placeholder="e.g. Morning glass, After workout...">
+    <button class="add-btn" onclick="addSchedule()">+ ADD REMINDER</button>
+  </div>
+
+  <div class="section-sub">YOUR REMINDERS</div>
+  <div class="schedule-list" id="scheduleList">
+    <div class="empty-state" id="emptySchedule">NO REMINDERS SET YET</div>
+  </div>
+</div>
+
+<!-- ── STATS ── -->
+<div class="screen" id="screen-stats">
+  <div class="section-title">STATS</div>
+  <div class="section-sub">YOUR HYDRATION HISTORY</div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statToday">0</div>
+      <div class="stat-name">TODAY</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statStreak">0</div>
+      <div class="stat-name">DAY STREAK</div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="statBest">0</div>
+      <div class="stat-name">BEST DAY</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-name">ALL TIME</div>
+    </div>
+  </div>
+
+  <div class="week-bar-label">THIS WEEK</div>
+  <div class="week-bars" id="weekBars"></div>
+</div>
+
+<!-- ── SETTINGS ── -->
+<div class="screen" id="screen-settings">
+  <div class="section-title">SETUP</div>
+  <div class="section-sub">CONFIGURE ZX WATER TRACKER</div>
+
+  <div class="settings-section">
+    <div class="settings-title">GOAL</div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">DAILY GLASS GOAL</div>
+        <div class="setting-desc">DEFAULT IS 8 GLASSES PER DAY</div>
+      </div>
+      <input type="number" class="goal-input" id="goalInput" value="8" min="1" max="20" onchange="saveGoal()">
+    </div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">GLASS SIZE (ML)</div>
+        <div class="setting-desc">MILLILITRES PER GLASS</div>
+      </div>
+      <input type="number" class="goal-input" id="glassMlInput" value="250" min="100" max="1000" onchange="saveGoal()">
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">NOTIFICATIONS</div>
+    <div class="setting-row">
+      <div>
+        <div class="setting-label">PERMISSION STATUS</div>
+        <div class="setting-desc">REQUIRED FOR REMINDERS</div>
+      </div>
+      <div class="notif-status" id="notifStatusText">CHECKING...</div>
+    </div>
+    <button class="reset-btn" onclick="requestNotifPermission()">REQUEST PERMISSION</button>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-title">RESET</div>
+    <button class="reset-btn" onclick="resetToday()">RESET TODAY'S COUNT</button>
+    <button class="reset-btn" onclick="resetAll()" style="margin-top:8px;border-color:#444">RESET ALL DATA</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const STATE_KEY = 'zx_water_v2';
+
+function getState() {
+  try { return JSON.parse(localStorage.getItem(STATE_KEY)) || {}; } catch { return {}; }
+}
+
+function saveState(s) {
+  localStorage.setItem(STATE_KEY, JSON.stringify(s));
+}
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function initState() {
+  const s = getState();
+  const today = todayKey();
+  if (!s.goal) s.goal = 8;
+  if (!s.glassMl) s.glassMl = 250;
+  if (!s.schedule) s.schedule = [];
+  if (!s.history) s.history = {};
+  if (!s.history[today]) s.history[today] = 0;
+  saveState(s);
+  return s;
+}
+
+// ══════════════════════════════════════════════
+// MIDNIGHT RESET
+// ══════════════════════════════════════════════
+function checkMidnightReset() {
+  const s = getState();
+  const today = todayKey();
+  if (!s.history) s.history = {};
+  if (!s.history[today]) {
+    s.history[today] = 0;
+    saveState(s);
+  }
+}
+
+setInterval(checkMidnightReset, 60000);
+
+// ══════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['home','schedule','stats','settings'][i] === name);
+  });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  if (name === 'stats') renderStats();
+  if (name === 'home') renderHome();
+}
+
+// ══════════════════════════════════════════════
+// HOME
+// ══════════════════════════════════════════════
+function renderHome() {
+  checkMidnightReset();
+  const s = getState();
+  const today = todayKey();
+  const count = s.history[today] || 0;
+  const goal = s.goal || 8;
+  const ml = s.glassMl || 250;
+
+  // Date
+  const now = new Date();
+  document.getElementById('dateDisplay').textContent =
+    now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }).toUpperCase();
+
+  // Ring
+  const circ = 2 * Math.PI * 80;
+  const pct = Math.min(count / goal, 1);
+  document.getElementById('ringFg').style.strokeDashoffset = circ * (1 - pct);
+  document.getElementById('ringCount').textContent = count;
+  document.getElementById('ringGoal').textContent = goal;
+
+  // Glasses
+  const grid = document.getElementById('glassesGrid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= goal; i++) {
+    const div = document.createElement('div');
+    div.className = 'glass-btn' + (i <= count ? ' filled' : '');
+    div.innerHTML = `<div class="glass-icon">🥛</div><div class="glass-num">#${i}</div>`;
+    div.onclick = () => { setGlasses(i); };
+    grid.appendChild(div);
+  }
+
+  // Status bar
+  const remaining = Math.max(goal - count, 0);
+  document.getElementById('statusRemaining').textContent = remaining;
+  document.getElementById('statusMl').textContent = (count * ml).toLocaleString();
+  const statusEl = document.getElementById('statusText');
+  if (count >= goal) { statusEl.textContent = 'DONE ✓'; statusEl.style.color = '#fff'; }
+  else if (count === 0) { statusEl.textContent = 'PENDING'; statusEl.style.color = '#666'; }
+  else { statusEl.textContent = 'IN PROG'; statusEl.style.color = '#aaa'; }
+}
+
+function drinkGlass() {
+  const s = getState();
+  const today = todayKey();
+  const goal = s.goal || 8;
+  if ((s.history[today] || 0) >= goal) { showToast('GOAL REACHED! 🎉'); return; }
+  s.history[today] = (s.history[today] || 0) + 1;
+  saveState(s);
+  renderHome();
+  if (s.history[today] >= goal) showToast('GOAL REACHED! WELL DONE!');
+  else showToast(`GLASS ${s.history[today]} LOGGED`);
+}
+
+function undoGlass() {
+  const s = getState();
+  const today = todayKey();
+  if ((s.history[today] || 0) <= 0) { showToast('NOTHING TO UNDO'); return; }
+  s.history[today]--;
+  saveState(s);
+  renderHome();
+  showToast('LAST GLASS REMOVED');
+}
+
+function setGlasses(n) {
+  const s = getState();
+  const today = todayKey();
+  s.history[today] = n;
+  saveState(s);
+  renderHome();
+  showToast(`SET TO ${n} GLASS${n !== 1 ? 'ES' : ''}`);
+}
+
+// ══════════════════════════════════════════════
+// SCHEDULE
+// ══════════════════════════════════════════════
+function renderSchedule() {
+  const s = getState();
+  const list = document.getElementById('scheduleList');
+  const empty = document.getElementById('emptySchedule');
+  const items = s.schedule || [];
+
+  // Remove all except empty state
+  [...list.children].forEach(c => { if (c !== empty) c.remove(); });
+
+  if (items.length === 0) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  const sorted = [...items].sort((a,b) => a.time.localeCompare(b.time));
+
+  sorted.forEach((item) => {
+    const div = document.createElement('div');
+    div.className = 'schedule-item';
+    div.id = 'sched-' + item.id;
+
+    const [h, m] = item.time.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = ((h % 12) || 12);
+    const display = `${String(h12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+
+    div.innerHTML = `
+      <div class="sched-left">
+        <div class="sched-time">${display}</div>
+        <div class="sched-note">${item.note || 'DRINK WATER REMINDER'}</div>
+      </div>
+      <div class="sched-right">
+        <label class="toggle-switch">
+          <input type="checkbox" ${item.enabled ? 'checked' : ''} onchange="toggleSchedule('${item.id}', this.checked)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+        <button class="delete-btn" onclick="deleteSchedule('${item.id}')">✕</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function addSchedule() {
+  const time = document.getElementById('schedTimeInput').value;
+  const note = document.getElementById('schedNoteInput').value.trim();
+  if (!time) { showToast('SELECT A TIME FIRST'); return; }
+
+  const s = getState();
+  const exists = s.schedule.find(x => x.time === time);
+  if (exists) { showToast('TIME ALREADY EXISTS'); return; }
+
+  const id = Date.now().toString();
+  s.schedule.push({ id, time, note: note.toUpperCase() || '', enabled: true });
+  saveState(s);
+  document.getElementById('schedTimeInput').value = '';
+  document.getElementById('schedNoteInput').value = '';
+  renderSchedule();
+  scheduleAllNotifications();
+  showToast('REMINDER ADDED');
+}
+
+function deleteSchedule(id) {
+  const s = getState();
+  s.schedule = s.schedule.filter(x => x.id !== id);
+  saveState(s);
+  renderSchedule();
+  scheduleAllNotifications();
+  showToast('REMINDER REMOVED');
+}
+
+function toggleSchedule(id, enabled) {
+  const s = getState();
+  const item = s.schedule.find(x => x.id === id);
+  if (item) item.enabled = enabled;
+  saveState(s);
+  scheduleAllNotifications();
+  showToast(enabled ? 'REMINDER ON' : 'REMINDER OFF');
+}
+
+// ══════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════
+function renderStats() {
+  checkMidnightReset();
+  const s = getState();
+  const today = todayKey();
+  const history = s.history || {};
+  const goal = s.goal || 8;
+
+  const todayCount = history[today] || 0;
+  document.getElementById('statToday').textContent = todayCount;
+
+  // Streak
+  let streak = 0;
+  let d = new Date();
+  while (true) {
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if ((history[key] || 0) >= goal) { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const allVals = Object.values(history);
+  document.getElementById('statBest').textContent = allVals.length ? Math.max(...allVals) : 0;
+  document.getElementById('statTotal').textContent = allVals.reduce((a,b) => a+b, 0);
+
+  // Week bars
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const now = new Date();
+  const weekContainer = document.getElementById('weekBars');
+  weekContainer.innerHTML = '';
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(now);
+    dt.setDate(now.getDate() - i);
+    const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const val = history[key] || 0;
+    const pct = Math.min(val / goal, 1);
+    const isToday = i === 0;
+
+    const col = document.createElement('div');
+    col.className = 'week-bar-col';
+
+    const bar = document.createElement('div');
+    bar.className = 'week-bar' + (isToday ? ' today' : (val > 0 ? ' past' : ' empty'));
+    bar.style.height = Math.max(pct * 60, val > 0 ? 4 : 2) + 'px';
+
+    const label = document.createElement('div');
+    label.className = 'week-day' + (isToday ? ' today' : '');
+    label.textContent = days[dt.getDay()];
+
+    col.appendChild(bar);
+    col.appendChild(label);
+    weekContainer.appendChild(col);
+  }
+}
+
+// ══════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════
+function saveGoal() {
+  const s = getState();
+  s.goal = parseInt(document.getElementById('goalInput').value) || 8;
+  s.glassMl = parseInt(document.getElementById('glassMlInput').value) || 250;
+  saveState(s);
+  renderHome();
+  showToast('SETTINGS SAVED');
+}
+
+function resetToday() {
+  const s = getState();
+  const today = todayKey();
+  s.history[today] = 0;
+  saveState(s);
+  renderHome();
+  showToast('TODAY RESET');
+}
+
+function resetAll() {
+  if (!confirm('Reset ALL data including history and schedule?')) return;
+  localStorage.removeItem(STATE_KEY);
+  initState();
+  renderHome();
+  renderSchedule();
+  showToast('ALL DATA CLEARED');
+}
+
+function loadSettings() {
+  const s = getState();
+  document.getElementById('goalInput').value = s.goal || 8;
+  document.getElementById('glassMlInput').value = s.glassMl || 250;
+}
+
+// ══════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════
+let notifTimers = [];
+
+function updateNotifUI() {
+  const perm = Notification.permission;
+  const banner = document.getElementById('notifBanner');
+  const statusEl = document.getElementById('notifStatusText');
+
+  if (perm === 'granted') {
+    banner.classList.remove('show');
+    statusEl.textContent = 'GRANTED ✓';
+    statusEl.className = 'notif-status granted';
+  } else if (perm === 'denied') {
+    banner.classList.add('show');
+    statusEl.textContent = 'DENIED ✗';
+    statusEl.className = 'notif-status denied';
+  } else {
+    banner.classList.add('show');
+    statusEl.textContent = 'NOT SET';
+    statusEl.className = 'notif-status';
+  }
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    showToast('NOTIFICATIONS NOT SUPPORTED');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  updateNotifUI();
+  if (perm === 'granted') {
+    showToast('NOTIFICATIONS ENABLED!');
+    scheduleAllNotifications();
+  } else {
+    showToast('NOTIFICATIONS DENIED');
+  }
+}
+
+function scheduleAllNotifications() {
+  // Clear existing timers
+  notifTimers.forEach(clearTimeout);
+  notifTimers = [];
+
+  if (Notification.permission !== 'granted') return;
+
+  const s = getState();
+  const items = (s.schedule || []).filter(x => x.enabled);
+
+  items.forEach(item => {
+    const now = new Date();
+    const [h, m] = item.time.split(':').map(Number);
+
+    let target = new Date();
+    target.setHours(h, m, 0, 0);
+
+    // If time has passed today, schedule for tomorrow
+    if (target <= now) target.setDate(target.getDate() + 1);
+
+    const delay = target - now;
+
+    const timer = setTimeout(() => {
+      const s2 = getState();
+      const today = todayKey();
+      const count = s2.history[today] || 0;
+      const goal = s2.goal || 8;
+
+      if (count < goal) {
+        const note = item.note || 'TIME TO DRINK WATER';
+        try {
+          new Notification('💧 ZX WATER TRACKER', {
+            body: `${note}\n${count}/${goal} glasses done today`,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💧</text></svg>',
+            badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💧</text></svg>',
+            tag: 'zx-water-' + item.id,
+            requireInteraction: false
+          });
+        } catch(e) {}
+      }
+
+      // Re-schedule for next day
+      scheduleAllNotifications();
+    }, delay);
+
+    notifTimers.push(timer);
+  });
+}
+
+// Tick every minute to check & re-schedule
+setInterval(() => {
+  if (Notification.permission === 'granted') scheduleAllNotifications();
+}, 60 * 60 * 1000); // re-schedule every hour
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+initState();
+renderHome();
+renderSchedule();
+loadSettings();
+updateNotifUI();
+scheduleAllNotifications();
+
+// Check permission on load
+if ('Notification' in window && Notification.permission === 'default') {
+  document.getElementById('notifBanner').classList.add('show');
+}
+</script>
+</body>
+</html>
